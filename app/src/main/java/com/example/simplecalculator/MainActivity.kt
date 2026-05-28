@@ -7,6 +7,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.example.simplecalculator.game.CarPhysics
 import com.example.simplecalculator.game.GameLoop
+import com.example.simplecalculator.game.ObstacleSystem
 import com.example.simplecalculator.game.RoadView
 import kotlin.math.roundToInt
 
@@ -21,13 +22,26 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnReset: Button
 
     private val carPhysics = CarPhysics()
+    private val obstacles = ObstacleSystem()
+    private var playerLaneIndex: Int = 0
 
     private val loop = GameLoop { dt ->
         // Update physics with real dt for consistent behavior across devices.
         carPhysics.update(dt)
 
+        // Update obstacle positions relative to player speed and spawn new ones.
+        obstacles.update(dtSeconds = dt, carSpeedMps = carPhysics.speedMps)
+
+        // Collision: if we hit an obstacle in our lane, apply an immediate slowdown.
+        when (val res = obstacles.checkCollisionAndConsume(playerLaneIndex)) {
+            is ObstacleSystem.CollisionResult.Hit -> carPhysics.applySpeedMultiplier(res.speedMultiplier)
+            ObstacleSystem.CollisionResult.None -> Unit
+        }
+
         // Push speed into visuals and animate the road dashes.
         roadView.setSpeed(carPhysics.speedMps)
+        roadView.setPlayerLaneIndex(playerLaneIndex)
+        roadView.setObstacles(obstacles.obstacles())
         roadView.update(dt)
 
         // Update HUD (simple and readable).
@@ -63,6 +77,7 @@ class MainActivity : AppCompatActivity() {
         btnReset.setOnClickListener {
             // Reset also clears inputs so user restarts in a predictable state.
             carPhysics.reset()
+            obstacles.reset()
             updateHud()
         }
 
