@@ -1,100 +1,124 @@
 package com.example.simplecalculator
 
 import android.os.Bundle
+import android.view.MotionEvent
 import android.widget.Button
-import android.widget.EditText
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.example.simplecalculator.game.CarPhysics
+import com.example.simplecalculator.game.GameLoop
+import com.example.simplecalculator.game.RoadView
+import kotlin.math.roundToInt
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var txt1: EditText
-    private lateinit var txt2: EditText
-    private lateinit var result: TextView
+    private lateinit var roadView: RoadView
+    private lateinit var speedText: TextView
+    private lateinit var stateText: TextView
+
+    private lateinit var btnThrottle: Button
+    private lateinit var btnBrake: Button
+    private lateinit var btnReset: Button
+
+    private val carPhysics = CarPhysics()
+
+    private val loop = GameLoop { dt ->
+        // Update physics with real dt for consistent behavior across devices.
+        carPhysics.update(dt)
+
+        // Push speed into visuals and animate the road dashes.
+        roadView.setSpeed(carPhysics.speedMps)
+        roadView.update(dt)
+
+        // Update HUD (simple and readable).
+        updateHud()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        txt1 = findViewById(R.id.txt1)
-        txt2 = findViewById(R.id.txt2)
-        result = findViewById(R.id.result)
+        roadView = findViewById(R.id.roadView)
+        speedText = findViewById(R.id.speedText)
+        stateText = findViewById(R.id.stateText)
 
-        val btnAdd: Button = findViewById(R.id.btnadd)
-        val btnSub: Button = findViewById(R.id.btnsubs)
-        val btnMul: Button = findViewById(R.id.btnmult)
-        val btnDiv: Button = findViewById(R.id.btndiv)
+        btnThrottle = findViewById(R.id.btnThrottle)
+        btnBrake = findViewById(R.id.btnBrake)
+        btnReset = findViewById(R.id.btnReset)
 
-        // Keep click handlers small and delegate to shared validation parsing:
-        // This avoids duplicating "empty input" toast logic across operations.
-        btnAdd.setOnClickListener {
-            val (a, b) = readInputsOrToast() ?: return@setOnClickListener
-            val c = a + b
-            setResultText("The Addition Result Is $c")
+        // Press & hold inputs: closer to a driving control than a click toggle.
+        // Why: continuous throttle/brake control is required for realistic acceleration/braking behavior.
+        wireHoldButton(
+            button = btnThrottle,
+            onDown = { carPhysics.throttle = 1f },
+            onUp = { carPhysics.throttle = 0f }
+        )
+
+        wireHoldButton(
+            button = btnBrake,
+            onDown = { carPhysics.brake = 1f },
+            onUp = { carPhysics.brake = 0f }
+        )
+
+        btnReset.setOnClickListener {
+            // Reset also clears inputs so user restarts in a predictable state.
+            carPhysics.reset()
+            updateHud()
         }
 
-        btnSub.setOnClickListener {
-            val (a, b) = readInputsOrToast() ?: return@setOnClickListener
-            val c = a - b
-            setResultText("The Subtraction Result Is $c")
-        }
+        updateHud()
+    }
 
-        btnMul.setOnClickListener {
-            val (a, b) = readInputsOrToast() ?: return@setOnClickListener
-            val c = a * b
-            setResultText("The Multiplication Result Is $c")
-        }
+    override fun onResume() {
+        super.onResume()
+        loop.start()
+    }
 
-        btnDiv.setOnClickListener {
-            val (a, b) = readInputsOrToast() ?: return@setOnClickListener
+    override fun onPause() {
+        super.onPause()
+        loop.stop()
+    }
 
-            // Guard against divide-by-zero to avoid showing Infinity/NaN to users.
-            if (b == 0.0f) {
-                Toast.makeText(this, getString(R.string.toast_divide_by_zero), Toast.LENGTH_SHORT)
-                    .show()
-                return@setOnClickListener
+    /**
+     * Wires a "press and hold" button using touch events.
+     *
+     * Why not click listeners:
+     * - Click is discrete; we need continuous input while the user holds the control.
+     */
+    private fun wireHoldButton(
+        button: Button,
+        onDown: () -> Unit,
+        onUp: () -> Unit
+    ) {
+        button.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    onDown()
+                    true
+                }
+
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    onUp()
+                    true
+                }
+
+                else -> false
             }
-
-            val c = a / b
-            setResultText("The Division Result Is $c")
         }
     }
 
-    /**
-     * Reads the two input fields as floats.
-     *
-     * Why: The requirements specify toast validation when either input is empty.
-     * This helper centralizes that behavior so we cannot accidentally skip it for any operation.
-     *
-     * @return Pair(a, b) if both inputs are non-empty and parseable; otherwise null after a toast.
-     */
-    private fun readInputsOrToast(): Pair<Float, Float>? {
-        val s1 = txt1.text?.toString()?.trim().orEmpty()
-        val s2 = txt2.text?.toString()?.trim().orEmpty()
+    private fun updateHud() {
+        // Convert m/s to km/h for user-friendly display.
+        val speedKmh = (carPhysics.speedMps * 3.6f).roundToInt()
+        speedText.text = "Speed: $speedKmh km/h"
 
-        if (s1.isEmpty() || s2.isEmpty()) {
-            Toast.makeText(this, getString(R.string.toast_enter_number), Toast.LENGTH_SHORT).show()
-            return null
+        // Show current control state.
+        val state = when {
+            carPhysics.brake > 0f -> "braking"
+            carPhysics.throttle > 0f -> "accelerating"
+            carPhysics.speedMps > 0.2f -> "coasting"
+            else -> "idle"
         }
-
-        // Use toFloatOrNull() to avoid crashing on unexpected characters.
-        val a = s1.toFloatOrNull()
-        val b = s2.toFloatOrNull()
-        if (a == null || b == null) {
-            Toast.makeText(this, getString(R.string.toast_enter_number), Toast.LENGTH_SHORT).show()
-            return null
-        }
-
-        return a to b
-    }
-
-    /**
-     * Updates the result view.
-     *
-     * Why: Encapsulates UI formatting in one place; easy to enhance later (e.g., rounding).
-     */
-    private fun setResultText(text: String) {
-        result.text = text
+        stateText.text = "State: $state"
     }
 }
