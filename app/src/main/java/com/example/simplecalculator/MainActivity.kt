@@ -1,139 +1,168 @@
 package com.example.simplecalculator
 
 import android.os.Bundle
-import android.view.MotionEvent
 import android.widget.Button
+import android.widget.EditText
+import android.widget.Switch
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.example.simplecalculator.game.CarPhysics
-import com.example.simplecalculator.game.GameLoop
-import com.example.simplecalculator.game.ObstacleSystem
-import com.example.simplecalculator.game.RoadView
-import kotlin.math.roundToInt
+import androidx.appcompat.app.AppCompatDelegate
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var roadView: RoadView
-    private lateinit var speedText: TextView
-    private lateinit var stateText: TextView
+    private lateinit var etNum1: EditText
+    private lateinit var etNum2: EditText
+    private lateinit var tvResult: TextView
 
-    private lateinit var btnThrottle: Button
-    private lateinit var btnBrake: Button
-    private lateinit var btnReset: Button
+    private lateinit var btnAdd: Button
+    private lateinit var btnSub: Button
+    private lateinit var btnMul: Button
+    private lateinit var btnDiv: Button
 
-    private val carPhysics = CarPhysics()
-    private val obstacles = ObstacleSystem()
-    private var playerLaneIndex: Int = 0
+    private lateinit var darkModeSwitch: Switch
 
-    private val loop = GameLoop { dt ->
-        // Update physics with real dt for consistent behavior across devices.
-        carPhysics.update(dt)
+    private lateinit var tvHistory: TextView
+    private lateinit var btnClearHistory: Button
 
-        // Update obstacle positions relative to player speed and spawn new ones.
-        obstacles.update(dtSeconds = dt, carSpeedMps = carPhysics.speedMps)
+    /**
+     * In-memory history (kept simple). Newest entries are inserted at index 0.
+     * Note: not persisted across process death; this matches "UI simplicity".
+     */
+    private val history: MutableList<String> = mutableListOf()
 
-        // Collision: if we hit an obstacle in our lane, apply an immediate slowdown.
-        when (val res = obstacles.checkCollisionAndConsume(playerLaneIndex)) {
-            is ObstacleSystem.CollisionResult.Hit -> carPhysics.applySpeedMultiplier(res.speedMultiplier)
-            ObstacleSystem.CollisionResult.None -> Unit
-        }
-
-        // Push speed into visuals and animate the road dashes.
-        roadView.setSpeed(carPhysics.speedMps)
-        roadView.setPlayerLaneIndex(playerLaneIndex)
-        roadView.setObstacles(obstacles.obstacles())
-        roadView.update(dt)
-
-        // Update HUD (simple and readable).
-        updateHud()
-    }
+    private var internalThemeChange = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        roadView = findViewById(R.id.roadView)
-        speedText = findViewById(R.id.speedText)
-        stateText = findViewById(R.id.stateText)
+        etNum1 = findViewById(R.id.etNum1)
+        etNum2 = findViewById(R.id.etNum2)
+        tvResult = findViewById(R.id.tvResult)
 
-        btnThrottle = findViewById(R.id.btnThrottle)
-        btnBrake = findViewById(R.id.btnBrake)
-        btnReset = findViewById(R.id.btnReset)
+        btnAdd = findViewById(R.id.btnAdd)
+        btnSub = findViewById(R.id.btnSub)
+        btnMul = findViewById(R.id.btnMul)
+        btnDiv = findViewById(R.id.btnDiv)
 
-        // Press & hold inputs: closer to a driving control than a click toggle.
-        // Why: continuous throttle/brake control is required for realistic acceleration/braking behavior.
-        wireHoldButton(
-            button = btnThrottle,
-            onDown = { carPhysics.throttle = 1f },
-            onUp = { carPhysics.throttle = 0f }
+        darkModeSwitch = findViewById(R.id.darkModeSwitch)
+
+        tvHistory = findViewById(R.id.tvHistory)
+        btnClearHistory = findViewById(R.id.btnClearHistory)
+
+        // Initialize switch to reflect current mode.
+        darkModeSwitch.isChecked = isCurrentlyDarkMode()
+        darkModeSwitch.setOnCheckedChangeListener { _, isChecked ->
+            // Avoid re-trigger loops if we update UI state programmatically.
+            if (internalThemeChange) return@setOnCheckedChangeListener
+            setDarkModeEnabled(isChecked)
+        }
+
+        btnAdd.setOnClickListener { performBinaryOp("+") { a, b -> a + b } }
+        btnSub.setOnClickListener { performBinaryOp("-") { a, b -> a - b } }
+        btnMul.setOnClickListener { performBinaryOp("×") { a, b -> a * b } }
+        btnDiv.setOnClickListener { performDivision() }
+
+        btnClearHistory.setOnClickListener {
+            history.clear()
+            renderHistory()
+        }
+
+        renderHistory()
+    }
+
+    private fun isCurrentlyDarkMode(): Boolean {
+        // MODE_NIGHT_YES/NO are explicit; MODE_NIGHT_FOLLOW_SYSTEM is also possible.
+        return AppCompatDelegate.getDefaultNightMode() == AppCompatDelegate.MODE_NIGHT_YES
+    }
+
+    private fun setDarkModeEnabled(enabled: Boolean) {
+        internalThemeChange = true
+        AppCompatDelegate.setDefaultNightMode(
+            if (enabled) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO
         )
+        internalThemeChange = false
+        // Activity will recreate automatically to apply theme.
+    }
 
-        wireHoldButton(
-            button = btnBrake,
-            onDown = { carPhysics.brake = 1f },
-            onUp = { carPhysics.brake = 0f }
-        )
+    private fun performDivision() {
+        val parsed = parseInputsOrShowToast() ?: return
+        val a = parsed.first
+        val b = parsed.second
 
-        btnReset.setOnClickListener {
-            // Reset also clears inputs so user restarts in a predictable state.
-            carPhysics.reset()
-            obstacles.reset()
-            updateHud()
+        if (b == 0.0) {
+            Toast.makeText(this, getString(R.string.divide_by_zero), Toast.LENGTH_SHORT).show()
+            return
         }
 
-        updateHud()
+        val result = a / b
+        applyResultAndRecord(a, "÷", b, result)
     }
 
-    override fun onResume() {
-        super.onResume()
-        loop.start()
+    private fun performBinaryOp(symbol: String, op: (Double, Double) -> Double) {
+        val parsed = parseInputsOrShowToast() ?: return
+        val a = parsed.first
+        val b = parsed.second
+
+        val result = op(a, b)
+        applyResultAndRecord(a, symbol, b, result)
     }
 
-    override fun onPause() {
-        super.onPause()
-        loop.stop()
+    private fun applyResultAndRecord(a: Double, symbol: String, b: Double, result: Double) {
+        val pretty = buildHistoryLine(a, symbol, b, result)
+        tvResult.text = getString(R.string.result_format, result.toCleanString())
+
+        history.add(0, pretty)
+        // Keep history short and readable.
+        if (history.size > 20) {
+            history.removeAt(history.lastIndex)
+        }
+        renderHistory()
     }
 
-    /**
-     * Wires a "press and hold" button using touch events.
-     *
-     * Why not click listeners:
-     * - Click is discrete; we need continuous input while the user holds the control.
-     */
-    private fun wireHoldButton(
-        button: Button,
-        onDown: () -> Unit,
-        onUp: () -> Unit
-    ) {
-        button.setOnTouchListener { _, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    onDown()
-                    true
-                }
-
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    onUp()
-                    true
-                }
-
-                else -> false
-            }
+    private fun renderHistory() {
+        tvHistory.text = if (history.isEmpty()) {
+            getString(R.string.history_empty)
+        } else {
+            history.joinToString(separator = "\n")
         }
     }
 
-    private fun updateHud() {
-        // Convert m/s to km/h for user-friendly display.
-        val speedKmh = (carPhysics.speedMps * 3.6f).roundToInt()
-        speedText.text = "Speed: $speedKmh km/h"
+    private fun parseInputsOrShowToast(): Pair<Double, Double>? {
+        val s1 = etNum1.text?.toString()?.trim().orEmpty()
+        val s2 = etNum2.text?.toString()?.trim().orEmpty()
 
-        // Show current control state.
-        val state = when {
-            carPhysics.brake > 0f -> "braking"
-            carPhysics.throttle > 0f -> "accelerating"
-            carPhysics.speedMps > 0.2f -> "coasting"
-            else -> "idle"
+        if (s1.isEmpty() || s2.isEmpty()) {
+            Toast.makeText(this, getString(R.string.enter_both_values), Toast.LENGTH_SHORT).show()
+            return null
         }
-        stateText.text = "State: $state"
+
+        val a = s1.toDoubleOrNull()
+        val b = s2.toDoubleOrNull()
+        if (a == null || b == null) {
+            Toast.makeText(this, getString(R.string.invalid_number), Toast.LENGTH_SHORT).show()
+            return null
+        }
+
+        return a to b
     }
+
+    private fun buildHistoryLine(a: Double, symbol: String, b: Double, result: Double): String {
+        return "${a.toCleanString()} $symbol ${b.toCleanString()} = ${result.toCleanString()}"
+    }
+}
+
+/**
+ * Formats a Double for simple calculator display:
+ * - removes trailing ".0" for whole numbers
+ * - keeps a reasonable length for typical inputs
+ */
+private fun Double.toCleanString(): String {
+    val asLong = this.toLong()
+    if (this == asLong.toDouble()) return asLong.toString()
+
+    // Keep it simple: up to 8 decimal places, trim trailing zeros.
+    val s = String.format(java.util.Locale.US, "%.8f", this)
+    return s.trimEnd('0').trimEnd('.')
 }

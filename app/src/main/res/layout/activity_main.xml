@@ -1,114 +1,191 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  MVP endless-runner racing screen:
-  - A simple "road" view with lane markers (pure Canvas drawing, no images required)
-  - Speed HUD (km/h) + small status text (throttle/brake/coast)
-  - Throttle and Brake controls (press & hold)
-  - Reset button to quickly restart the run
+  Simple Calculator (non-Compose, XML-based)
 
-  Why XML + Views:
-  - Project constraint: non-Compose
-  - Minimal dependencies and easy to understand for an MVP
+  Requirements preserved:
+  - Two decimal inputs
+  - Add, Subtract, Multiply, Divide
+  - Toast validation if either input is empty
+  - Safe divide-by-zero handling
+
+  New features:
+  - Calculation history list (most recent first)
+  - Dark mode toggle (light/dark theme switching)
 -->
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
     android:padding="16dp">
 
-    <com.example.simplecalculator.game.RoadView
-        android:id="@+id/roadView"
+    <!-- Header row: title + theme toggle -->
+    <TextView
+        android:id="@+id/titleText"
         android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:contentDescription="@string/cd_road_view"
+        android:layout_height="wrap_content"
+        android:text="@string/app_name"
+        android:textAppearance="?attr/textAppearanceHeadline6"
+        android:textStyle="bold"
+        android:ellipsize="end"
+        android:maxLines="1"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/controlPanel"
+        app:layout_constraintEnd_toStartOf="@id/darkModeSwitch"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <Switch
+        android:id="@+id/darkModeSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/dark_mode"
+        app:layout_constraintTop_toTopOf="@id/titleText"
+        app:layout_constraintBottom_toBottomOf="@id/titleText"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Inputs -->
+    <EditText
+        android:id="@+id/etNum1"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:hint="@string/enter_first_number"
+        android:inputType="numberDecimal|numberSigned"
+        android:importantForAutofill="no"
+        app:layout_constraintTop_toBottomOf="@id/titleText"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- HUD container: speed + state -->
-    <LinearLayout
-        android:id="@+id/hud"
+    <EditText
+        android:id="@+id/etNum2"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="12dp"
-        android:background="@android:color/transparent"
-        app:layout_constraintTop_toTopOf="@id/roadView"
-        app:layout_constraintStart_toStartOf="@id/roadView"
-        app:layout_constraintEnd_toEndOf="@id/roadView">
+        android:layout_marginTop="10dp"
+        android:hint="@string/enter_second_number"
+        android:inputType="numberDecimal|numberSigned"
+        android:importantForAutofill="no"
+        app:layout_constraintTop_toBottomOf="@id/etNum1"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-        <TextView
-            android:id="@+id/speedText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/speed_placeholder"
-            android:textColor="@color/black"
-            android:textSize="22sp"
-            android:fontFamily="sans-serif-medium" />
+    <!-- Result -->
+    <TextView
+        android:id="@+id/tvResult"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/result_placeholder"
+        android:textAppearance="?attr/textAppearanceSubtitle1"
+        android:textStyle="bold"
+        app:layout_constraintTop_toBottomOf="@id/etNum2"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-        <TextView
-            android:id="@+id/stateText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/state_placeholder"
-            android:textColor="@color/black"
-            android:textSize="14sp" />
+    <!-- Operation buttons -->
+    <LinearLayout
+        android:id="@+id/btnRow1"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal"
+        android:weightSum="2"
+        app:layout_constraintTop_toBottomOf="@id/tvResult"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <Button
+            android:id="@+id/btnAdd"
+            android:layout_width="0dp"
+            android:layout_height="54dp"
+            android:layout_weight="1"
+            android:text="@string/add"
+            android:textAllCaps="false" />
+
+        <Button
+            android:id="@+id/btnSub"
+            android:layout_width="0dp"
+            android:layout_height="54dp"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:text="@string/subtract"
+            android:textAllCaps="false" />
     </LinearLayout>
 
-    <!-- Controls panel -->
     <LinearLayout
-        android:id="@+id/controlPanel"
+        android:id="@+id/btnRow2"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal"
+        android:weightSum="2"
+        app:layout_constraintTop_toBottomOf="@id/btnRow1"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <Button
+            android:id="@+id/btnMul"
+            android:layout_width="0dp"
+            android:layout_height="54dp"
+            android:layout_weight="1"
+            android:text="@string/multiply"
+            android:textAllCaps="false" />
+
+        <Button
+            android:id="@+id/btnDiv"
+            android:layout_width="0dp"
+            android:layout_height="54dp"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:text="@string/divide"
+            android:textAllCaps="false" />
+    </LinearLayout>
+
+    <!-- History header -->
+    <LinearLayout
+        android:id="@+id/historyHeader"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:orientation="horizontal"
+        app:layout_constraintTop_toBottomOf="@id/btnRow2"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/historyTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/history"
+            android:textAppearance="?attr/textAppearanceSubtitle1"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btnClearHistory"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="@string/clear"
+            android:textAllCaps="false" />
+    </LinearLayout>
+
+    <!-- History list -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/historyScroll"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@id/historyHeader"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <LinearLayout
-            android:id="@+id/buttonRow"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:weightSum="3">
-
-            <Button
-                android:id="@+id/btnBrake"
-                android:layout_width="0dp"
-                android:layout_height="56dp"
-                android:layout_weight="1"
-                android:text="@string/brake"
-                android:textAllCaps="false" />
-
-            <Button
-                android:id="@+id/btnThrottle"
-                android:layout_width="0dp"
-                android:layout_height="56dp"
-                android:layout_weight="1"
-                android:text="@string/throttle"
-                android:textAllCaps="false" />
-
-            <Button
-                android:id="@+id/btnReset"
-                android:layout_width="0dp"
-                android:layout_height="56dp"
-                android:layout_weight="1"
-                android:text="@string/reset"
-                android:textAllCaps="false" />
-        </LinearLayout>
-
         <TextView
-            android:id="@+id/helpText"
+            android:id="@+id/tvHistory"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="@string/help_controls"
-            android:textColor="@color/black"
-            android:textSize="12sp" />
-    </LinearLayout>
+            android:text="@string/history_empty"
+            android:textAppearance="?attr/textAppearanceBody2"
+            android:lineSpacingExtra="2dp" />
+    </androidx.core.widget.NestedScrollView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
