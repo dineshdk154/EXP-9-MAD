@@ -1,108 +1,114 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Simple calculator screen:
-  - Two numeric decimal inputs
-  - Result display
-  - Four operation buttons
+  MVP endless-runner racing screen:
+  - A simple "road" view with lane markers (pure Canvas drawing, no images required)
+  - Speed HUD (km/h) + small status text (throttle/brake/coast)
+  - Throttle and Brake controls (press & hold)
+  - Reset button to quickly restart the run
+
+  Why XML + Views:
+  - Project constraint: non-Compose
+  - Minimal dependencies and easy to understand for an MVP
 -->
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="20dp">
+    android:background="@color/white"
+    android:padding="16dp">
 
-    <TextView
-        android:id="@+id/titleText"
+    <com.example.simplecalculator.game.RoadView
+        android:id="@+id/roadView"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:fontFamily="sans-serif-medium"
-        android:text="@string/simple_calculator"
-        android:textColor="@color/purple_500"
-        android:textSize="24sp"
-        android:gravity="center"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <EditText
-        android:id="@+id/txt1"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:hint="@string/first_number"
-        android:inputType="numberDecimal"
-        android:importantForAutofill="no"
-        android:layout_marginTop="24dp"
-        app:layout_constraintTop_toBottomOf="@id/titleText"
+        android:layout_height="0dp"
+        android:contentDescription="@string/cd_road_view"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/controlPanel"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <EditText
-        android:id="@+id/txt2"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:hint="@string/second_number"
-        android:inputType="numberDecimal"
-        android:importantForAutofill="no"
-        android:layout_marginTop="12dp"
-        app:layout_constraintTop_toBottomOf="@id/txt1"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <TextView
-        android:id="@+id/result"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="18dp"
-        android:text="@string/result_placeholder"
-        android:textSize="18sp"
-        android:textColor="@android:color/black"
-        app:layout_constraintTop_toBottomOf="@id/txt2"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
+    <!-- HUD container: speed + state -->
     <LinearLayout
-        android:id="@+id/buttonRow"
+        android:id="@+id/hud"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="28dp"
-        android:orientation="horizontal"
-        android:weightSum="4"
-        app:layout_constraintTop_toBottomOf="@id/result"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:background="@android:color/transparent"
+        app:layout_constraintTop_toTopOf="@id/roadView"
+        app:layout_constraintStart_toStartOf="@id/roadView"
+        app:layout_constraintEnd_toEndOf="@id/roadView">
+
+        <TextView
+            android:id="@+id/speedText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/speed_placeholder"
+            android:textColor="@color/black"
+            android:textSize="22sp"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:id="@+id/stateText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/state_placeholder"
+            android:textColor="@color/black"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <!-- Controls panel -->
+    <LinearLayout
+        android:id="@+id/controlPanel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="12dp"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <Button
-            android:id="@+id/btnadd"
-            android:layout_width="0dp"
-            android:layout_height="52dp"
-            android:layout_weight="1"
-            android:text="@string/add"
-            android:textSize="20sp" />
+        <LinearLayout
+            android:id="@+id/buttonRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:weightSum="3">
 
-        <Button
-            android:id="@+id/btnsubs"
-            android:layout_width="0dp"
-            android:layout_height="52dp"
-            android:layout_weight="1"
-            android:text="@string/subtract"
-            android:textSize="20sp" />
+            <Button
+                android:id="@+id/btnBrake"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:text="@string/brake"
+                android:textAllCaps="false" />
 
-        <Button
-            android:id="@+id/btnmult"
-            android:layout_width="0dp"
-            android:layout_height="52dp"
-            android:layout_weight="1"
-            android:text="@string/multiply"
-            android:textSize="20sp" />
+            <Button
+                android:id="@+id/btnThrottle"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:text="@string/throttle"
+                android:textAllCaps="false" />
 
-        <Button
-            android:id="@+id/btndiv"
-            android:layout_width="0dp"
-            android:layout_height="52dp"
-            android:layout_weight="1"
-            android:text="@string/divide"
-            android:textSize="20sp" />
+            <Button
+                android:id="@+id/btnReset"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:text="@string/reset"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/helpText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/help_controls"
+            android:textColor="@color/black"
+            android:textSize="12sp" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
