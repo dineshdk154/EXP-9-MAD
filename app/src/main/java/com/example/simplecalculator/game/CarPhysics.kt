@@ -51,6 +51,16 @@ class CarPhysics(
         }
 
     // PUBLIC_INTERFACE
+    fun applySpeedMultiplier(multiplier: Float) {
+        /**
+         * Applies an instantaneous speed change, typically used for collisions/impacts.
+         *
+         * @param multiplier multiplicative factor applied to current speed (e.g., 0.7 reduces speed by 30%)
+         */
+        speedMps = (speedMps * multiplier.coerceIn(0f, 1f)).coerceIn(0f, params.maxSpeedMps)
+    }
+
+    // PUBLIC_INTERFACE
     fun reset() {
         /** Reset is public for the Activity's "Reset" button (user-facing restart). */
         speedMps = 0f
