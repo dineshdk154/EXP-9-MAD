@@ -1,0 +1,22 @@
+/*
+ * Project settings for the EXP-9-MAD calculator app.
+ * Keeping it minimal and standard so it works in CI and Android Studio.
+ */
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "SimpleCalculator"
+include(":app")
