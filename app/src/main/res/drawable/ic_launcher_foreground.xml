@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Simple foreground mark so the project builds without needing binary mipmap assets.
+  Android Studio normally generates pngs; here we use a vector drawable substitute.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M54,18c19.9,0 36,16.1 36,36s-16.1,36 -36,36 -36,-16.1 -36,-36 16.1,-36 36,-36z" />
+    <path
+        android:fillColor="@color/purple_500"
+        android:pathData="M36,52h36v4H36z" />
+    <path
+        android:fillColor="@color/purple_500"
+        android:pathData="M52,36h4v36h-4z" />
+</vector>

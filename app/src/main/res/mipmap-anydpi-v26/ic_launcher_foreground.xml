@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Alias resource to satisfy @mipmap/ic_launcher_foreground in adaptive icons,
+  implemented as a drawable to avoid needing binary png assets.
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_launcher_foreground" />
+</selector>

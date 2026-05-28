@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">SimpleCalculator</string>
+    <string name="simple_calculator">Simple Calculator</string>
+
+    <string name="first_number">First number</string>
+    <string name="second_number">Second number</string>
+
+    <string name="add">+</string>
+    <string name="subtract">−</string>
+    <string name="multiply">×</string>
+    <string name="divide">÷</string>
+
+    <string name="result_placeholder">Result will appear here</string>
+
+    <string name="toast_enter_number">Please Enter Number</string>
+    <string name="toast_divide_by_zero">Cannot divide by zero</string>
+</resources>
